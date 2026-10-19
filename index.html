@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Cris</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Cris">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#c8102e">
+<style>
+  :root { color-scheme:light dark; --bg:#f6f4ef; --card:#fff; --ink:#1b1b1b; --mute:#77736b; --line:#e6e1d6; --accent:#c8102e; --ok:#1f8a4c; --warn:#c07a00; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#111; --card:#1c1c1c; --ink:#f2f2f2; --mute:#9a958c; --line:#2c2c2c; --accent:#ff3b4f; --ok:#3ccf7a; --warn:#f0a500; } }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; padding:0 16px 96px; }
+  header { display:flex; justify-content:space-between; align-items:baseline; padding:calc(14px + env(safe-area-inset-top)) 0 10px; }
+  header h1 { margin:0; font-size:24px; letter-spacing:.5px; } header h1 b { color:var(--accent); }
+  header span { color:var(--mute); font-size:13px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:14px; margin:0 0 12px; }
+  .card h2 { margin:0 0 8px; font-size:13px; text-transform:uppercase; letter-spacing:.8px; color:var(--mute); font-weight:600; }
+  .score { display:flex; align-items:center; gap:14px; }
+  .score .big { font-size:44px; font-weight:800; min-width:96px; }
+  .chips { display:flex; flex-wrap:wrap; gap:6px; }
+  .chip { font-size:12px; padding:3px 9px; border-radius:20px; border:1px solid var(--line); color:var(--mute); }
+  .chip.hit { background:var(--ok); border-color:var(--ok); color:#fff; }
+  .row { display:flex; justify-content:space-between; gap:8px; padding:6px 0; border-bottom:1px solid var(--line); }
+  .row:last-child { border-bottom:0; }
+  .mute { color:var(--mute); font-size:13px; }
+  .bar { height:8px; background:var(--line); border-radius:4px; overflow:hidden; margin:4px 0 10px; }
+  .bar i { display:block; height:100%; background:var(--accent); }
+  label { display:block; font-size:13px; color:var(--mute); margin:10px 0 4px; }
+  input, textarea, select { width:100%; font:inherit; color:var(--ink); background:var(--bg); border:1px solid var(--line); border-radius:10px; padding:10px; }
+  textarea { min-height:70px; resize:vertical; }
+  .two { display:flex; gap:10px; } .two > div { flex:1; }
+  button { font:inherit; font-weight:600; border:0; border-radius:10px; padding:12px; width:100%; background:var(--accent); color:#fff; margin-top:12px; }
+  button.ghost { background:transparent; color:var(--accent); border:1px solid var(--accent); }
+  button.x { width:auto; margin:0; padding:2px 8px; background:transparent; color:var(--mute); font-weight:400; }
+  .pick { display:flex; flex-wrap:wrap; gap:8px; } .pick button { width:auto; flex:1 0 28%; margin:0; background:var(--bg); color:var(--ink); border:1px solid var(--line); }
+  #cQ button { flex:1 0 0; }
+  .pick button.on { background:var(--accent); color:#fff; border-color:var(--accent); }
+  .warn { color:var(--warn); font-weight:600; font-size:13px; margin-top:8px; }
+  .unk { color:var(--warn); }
+  nav { position:fixed; left:0; right:0; bottom:0; display:flex; background:var(--card); border-top:1px solid var(--line); padding-bottom:env(safe-area-inset-bottom); }
+  nav a { flex:1; text-align:center; padding:12px 0; color:var(--mute); text-decoration:none; font-size:13px; font-weight:600; }
+  nav a.on { color:var(--accent); }
+  table { width:100%; border-collapse:collapse; font-size:12px; } td, th { padding:5px 3px; border-bottom:1px solid var(--line); text-align:right; } th { color:var(--mute); font-weight:600; } td:first-child, th:first-child { text-align:left; }
+  .modal { position:fixed; inset:0; background:var(--bg); overflow:auto; padding:0 16px 40px; z-index:5; }
+  .hide { display:none; }
+  #toast { position:fixed; left:50%; transform:translateX(-50%); bottom:84px; background:var(--ink); color:var(--bg); padding:8px 14px; border-radius:20px; font-size:13px; opacity:0; transition:opacity .3s; }
+  #toast.show { opacity:1; }
+</style>
+</head>
+<body>
+<header><h1>CRIS <b>·</b></h1><span id="date"></span></header>
+
+<section id="v-today">
+  <div class="card"><div class="score"><div class="big" id="score">–</div><div class="chips" id="chips"></div></div></div>
+  <div class="card"><h2>Fasting</h2><div id="fast" style="font-size:17px;font-weight:600"></div><div class="mute" id="fastSub"></div></div>
+  <div class="card hide" id="coachCard"><h2>Cris says</h2><div id="verdict"></div><div style="margin-top:8px;font-weight:600" id="fix"></div><div class="mute" id="coachDate"></div></div>
+  <div class="card"><h2>Today</h2>
+    <div class="row"><span>Protein</span><span id="pTxt"></span></div><div class="bar"><i id="pBar"></i></div>
+    <div class="row"><span>Calories</span><span id="kTxt"></span></div><div class="bar"><i id="kBar"></i></div>
+    <div class="row"><span>Sleep last night</span><span id="sleepTxt"></span></div>
+    <div class="row"><span>Weight (7-day avg)</span><span id="wTxt"></span></div>
+    <div class="row"><span>Steps yesterday</span><span id="stTxt"></span></div>
+  </div>
+  <div class="card"><h2>Meals</h2><div id="mealList"></div></div>
+  <div class="card"><h2>Workouts</h2><div id="woList"></div></div>
+  <button class="ghost" onclick="openCheckin()">Redo morning check-in</button>
+</section>
+
+<section id="v-food" class="hide">
+  <div class="card"><h2>What did you eat?</h2>
+    <textarea id="foodText" placeholder="2 roti, dal, 100g paneer, salad" oninput="preview()"></textarea>
+    <div id="parsed" class="mute" style="margin-top:8px"></div>
+    <div class="two"><div><label>Calories</label><input id="fKcal" type="number" inputmode="numeric" oninput="edited=true"></div>
+      <div><label>Protein (g)</label><input id="fProt" type="number" inputmode="numeric" oninput="edited=true"></div></div>
+    <label>Ate at</label><input id="fTime" type="time" oninput="preview()">
+    <div id="fWarn" class="warn"></div>
+    <button onclick="saveMeal()">Log meal</button>
+  </div>
+  <div class="card"><h2>Easy Indian protein</h2>
+    <div class="row"><span>Paneer 100 g</span><span>18 g · 265 kcal</span></div>
+    <div class="row"><span>Soya chunks 50 g dry</span><span>26 g · 173 kcal</span></div>
+    <div class="row"><span>4 eggs</span><span>25 g · 290 kcal</span></div>
+    <div class="row"><span>Chicken breast 150 g</span><span>46 g · 250 kcal</span></div>
+    <div class="row"><span>Hung curd / Greek yogurt 200 g</span><span>20 g · 200 kcal</span></div>
+    <div class="row"><span>Whey 1 scoop</span><span>24 g · 120 kcal</span></div>
+    <div class="row"><span>Moong chilla × 2</span><span>14 g · 260 kcal</span></div>
+    <div class="row"><span>Sprouts bowl + roasted chana 30 g</span><span>13 g · 210 kcal</span></div>
+  </div>
+</section>
+
+<section id="v-workout" class="hide">
+  <div class="card"><h2>Log workout</h2>
+    <div class="pick" id="woType"></div>
+    <label>Minutes</label><input id="woMin" type="number" inputmode="numeric" value="60">
+    <label>Key lifts (optional)</label><textarea id="woLifts" placeholder="Bench 60×8×3, Row 50×10×3"></textarea>
+    <label>Notes</label><input id="woNotes" placeholder="How did it feel?">
+    <button onclick="saveWorkout()">Log workout</button>
+  </div>
+</section>
+
+<section id="v-week" class="hide">
+  <div class="card"><h2>Last 7 days</h2><div id="weekStats"></div></div>
+  <div class="card"><h2>14 days</h2><table id="dayTable"></table></div>
+</section>
+
+<div id="checkin" class="modal hide">
+  <header><h1>Good morning</h1><span>Your Grace</span></header>
+  <div class="card">
+    <div class="two"><div><label>Slept at</label><input id="cSlept" type="time" value="00:30"></div>
+      <div><label>Woke at</label><input id="cWoke" type="time" value="08:00"></div></div>
+    <label>Sleep quality</label><div class="pick" id="cQ"></div>
+    <label>What would you like to change?</label><textarea id="cChange" placeholder="e.g. phone away by 12, no tea after 6pm"></textarea>
+    <label>Weight this morning (kg)</label><input id="cWeight" type="number" step="0.1" inputmode="decimal" placeholder="86.0">
+    <div id="cStepsWrap"><label>Steps yesterday (Shortcut didn't send them)</label><input id="cSteps" type="number" inputmode="numeric"></div>
+    <button onclick="saveCheckin()">Start the day</button>
+    <button class="ghost" onclick="hide('checkin')">Later</button>
+  </div>
+</div>
+
+<nav>
+  <a href="#" data-v="today" class="on">Today</a><a href="#" data-v="food">Food</a><a href="#" data-v="workout">Workout</a><a href="#" data-v="week">Week</a>
+</nav>
+<div id="setup" class="modal hide">
+  <header><h1>CRIS <b>·</b></h1><span>one-time setup</span></header>
+  <div class="card"><h2>Connect your log</h2>
+    <p class="mute">Paste your Cris link once (the Apps Script web app URL ending in <b>?k=YOURKEY</b>). It stays on this phone only.</p>
+    <textarea id="setupLink" placeholder="https://script.google.com/macros/s/…/exec?k=…"></textarea>
+    <button onclick="saveSetup()">Connect</button>
+  </div>
+</div>
+<div id="toast"></div>
+
+<script>
+let CFG = load('crisCfg'), S = load('crisState'), IDX = [], edited = false, quality = 0, woType = 'Upper';
+const $ = (id) => document.getElementById(id);
+const hide = (id) => $(id).classList.add('hide'), show = (id) => $(id).classList.remove('hide');
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+function load(k) { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; } }
+function keep(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+function toast(t) { const el = $('toast'); el.textContent = t; el.classList.add('show'); setTimeout(() => el.classList.remove('show'), 2200); }
+function todayISO() { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+
+// ----- server (Apps Script JSON API) with offline queue -----
+function gotState(st) { S = st; keep('crisState', S); IDX = []; render(); }
+async function send(action, p) {
+  const r = await fetch(CFG.url, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ key: CFG.key, action: action, p: p }) });
+  const j = await r.json(); if (!j.ok) throw new Error(j.error); return j.state;
+}
+async function refresh() {
+  if (!CFG) return;
+  try {
+    await flush();
+    const r = await fetch(CFG.url + '?k=' + encodeURIComponent(CFG.key) + '&action=state');
+    const j = await r.json(); if (!j.ok) throw new Error(j.error); gotState(j.state);
+  } catch (e) { if (String(e.message) === 'locked') { toast('Wrong key — reconnect'); show('setup'); } else if (!S) toast('Offline — open again when online'); }
+}
+async function flush() {
+  const q = load('crisQueue') || [];
+  while (q.length) { await send(q[0].action, q[0].p); q.shift(); keep('crisQueue', q); }
+}
+async function call(action, p, done) {
+  p = Object.assign({ date: todayISO() }, p || {});
+  try { await flush(); gotState(await send(action, p)); if (done) done(); }
+  catch (e) {
+    if (String(e.message) === 'locked') return toast('Wrong key — reconnect');
+    const q = load('crisQueue') || []; q.push({ action: action, p: p }); keep('crisQueue', q);
+    if (done) done(); toast('Saved offline — will sync');
+  }
+}
+function saveSetup() {
+  const m = $('setupLink').value.trim().match(/^(https:\/\/script\.google\.com\/(?:a\/macros\/[^\/]+|macros)\/s\/[^?\s]+\/exec)\?k=([A-Za-z0-9]+)/);
+  if (!m) return toast('That link needs …/exec?k=YOURKEY');
+  CFG = { url: m[1], key: m[2] }; keep('crisCfg', CFG); hide('setup'); toast('Connected'); refresh();
+}
+
+// ----- nav -----
+document.querySelectorAll('nav a').forEach((a) => a.onclick = (e) => {
+  e.preventDefault();
+  document.querySelectorAll('nav a').forEach((x) => x.classList.toggle('on', x === a));
+  ['today', 'food', 'workout', 'week'].forEach((v) => $('v-' + v).classList.toggle('hide', v !== a.dataset.v));
+  if (a.dataset.v === 'food') { $('fTime').value = nowHHMM(); preview(); }
+});
+
+// ----- food parser -----
+const NUMW = { half: 0.5, one: 1, two: 2, three: 3, four: 4, five: 5, six: 6 };
+const STOP = new Set('and with of a an some the little bit bowl bowls plate plates glass glasses cup cups piece pieces pc pcs small big large medium homemade ghar ka ki ke aur plus x katori slice slices also had ate i my for lunch dinner breakfast snack in on'.split(' '));
+const UNIT = '(g|gm|gms|grams?|ml|x|pcs?|pieces?|bowls?|plates?|glass(?:es)?|cups?|scoops?|slices?|tbsp|tsp|katori)';
+function buildIndex() {
+  IDX = [];
+  S.foods.forEach((f) => (f.Aliases || '').split('|').concat([f.Name]).forEach((a) => {
+    a = a.trim().toLowerCase(); if (a) IDX.push({ a: a, f: f, re: new RegExp('(?:(\\d+(?:\\.\\d+)?|half|one|two|three|four|five|six)\\s*' + UNIT + '?\\s*(?:of\\s+)?)?\\b' + a.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?:e?s)?\\b', 'g') });
+  }));
+  IDX.sort((x, y) => y.a.length - x.a.length);
+}
+function parse(text) {
+  let s = ' ' + text.toLowerCase().replace(/[,;+&\/]/g, ' , ') + ' ';
+  const items = [];
+  IDX.forEach(({ f, re }) => {
+    s = s.replace(re, (m, q, u) => {
+      let n = q ? (NUMW[q] !== undefined ? NUMW[q] : parseFloat(q)) : 1;
+      if (u && /^(g|gm|gms|gram|grams|ml)$/.test(u) && Number(f.Grams)) n = n / Number(f.Grams);
+      items.push({ name: f.Name, unit: f.Unit, qty: n, kcal: n * Number(f.Kcal), protein: n * Number(f.Protein) });
+      return ' , ';
+    });
+  });
+  const unknown = s.split(/[\s,]+/).filter((w) => w && !STOP.has(w) && !/^\d/.test(w) && !(w in NUMW));
+  return { items: items, unknown: unknown.join(' '),
+    kcal: Math.round(items.reduce((a, i) => a + i.kcal, 0)), protein: Math.round(items.reduce((a, i) => a + i.protein, 0)) };
+}
+function preview() {
+  const t = $('foodText').value.trim();
+  const p = parse(t);
+  $('parsed').innerHTML = p.items.map((i) => esc((+i.qty.toFixed(2)) + ' × ' + i.name + ' (' + i.unit + ') — ' + Math.round(i.kcal) + ' kcal, ' + Math.round(i.protein) + ' g')).join('<br>') +
+    (p.unknown ? '<div class="unk">Not in list: ' + esc(p.unknown) + ' — Cris will estimate overnight, or type the numbers.</div>' : '');
+  if (!edited) { $('fKcal').value = t ? p.kcal : ''; $('fProt').value = t ? p.protein : ''; }
+  const tm = $('fTime').value || nowHHMM();
+  $('fWarn').textContent = S && !inWindow(tm) ? 'Outside your eating window (' + S.targets.window_start + '–' + S.targets.window_end + '). Kitchen is closed — sure?' : '';
+}
+function saveMeal() {
+  const t = $('foodText').value.trim(); if (!t) return toast('Type what you ate');
+  const p = parse(t);
+  call('meal', { text: t, kcal: $('fKcal').value, protein: $('fProt').value, time: $('fTime').value || nowHHMM(), unknown: edited ? '' : p.unknown }, () => {
+    $('foodText').value = ''; edited = false; preview(); toast('Meal logged');
+  });
+}
+
+// ----- workout -----
+['Upper', 'Lower', 'Full body', 'Cardio', 'Walk', 'Sport'].forEach((t) => {
+  const b = document.createElement('button'); b.textContent = t; b.onclick = () => { woType = t; [...$('woType').children].forEach((x) => x.classList.toggle('on', x === b)); };
+  if (t === woType) b.classList.add('on'); $('woType').appendChild(b);
+});
+function saveWorkout() {
+  call('workout', { type: woType, minutes: $('woMin').value, lifts: $('woLifts').value, notes: $('woNotes').value }, () => {
+    $('woLifts').value = ''; $('woNotes').value = ''; toast('Workout logged 💪');
+  });
+}
+
+// ----- check-in -----
+[1, 2, 3, 4, 5].forEach((n) => {
+  const b = document.createElement('button'); b.textContent = n; b.onclick = () => { quality = n; [...$('cQ').children].forEach((x) => x.classList.toggle('on', x === b)); };
+  $('cQ').appendChild(b);
+});
+function openCheckin() { $('cStepsWrap').classList.toggle('hide', !S.needStepsYesterday); show('checkin'); }
+function saveCheckin() {
+  if (!quality) return toast('Rate your sleep 1–5');
+  call('checkin', { slept: $('cSlept').value, woke: $('cWoke').value, quality: quality, change: $('cChange').value, weight: $('cWeight').value, stepsYesterday: $('cSteps').value }, () => { hide('checkin'); toast('Logged. Go win the day.'); });
+}
+
+// ----- time helpers -----
+function nowHHMM() { const d = new Date(); return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); }
+function mins(t) { const p = String(t).split(':'); return +p[0] * 60 + +(p[1] || 0); }
+function inWindow(t) { return mins(t) >= mins(S.targets.window_start) && mins(t) <= mins(S.targets.window_end); }
+function hm(m) { m = Math.max(0, Math.round(m)); return Math.floor(m / 60) + 'h ' + (m % 60) + 'm'; }
+
+// ----- render -----
+function render() {
+  if (!IDX.length) buildIndex();
+  const T = S.targets, d = S.days[S.days.length - 1], y = S.days[S.days.length - 2];
+  $('date').textContent = new Date(S.today + 'T12:00').toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' });
+  $('score').textContent = d.score + '%';
+  $('chips').innerHTML = d.checks.map((c) => '<span class="chip' + (c.hit ? ' hit' : '') + '">' + c.name + '</span>').join('');
+  const pct = (a, b) => Math.min(100, Math.round(100 * a / b)) + '%';
+  $('pTxt').textContent = d.protein + ' / ' + T.protein_min + ' g'; $('pBar').style.width = pct(d.protein, T.protein_min);
+  $('kTxt').textContent = d.kcal + ' / ' + T.kcal; $('kBar').style.width = pct(d.kcal, T.kcal);
+  $('kBar').style.background = d.kcal > T.kcal + T.kcal_high ? 'var(--warn)' : '';
+  $('sleepTxt').textContent = d.hours !== null ? d.hours + ' h · bed ' + d.slept + ' · ' + d.quality + '/5' : 'check in';
+  $('wTxt').textContent = (d.weight !== null ? d.weight + ' kg' : '–') + (S.week.avgWeight ? ' (' + S.week.avgWeight + ')' : '');
+  $('stTxt').textContent = y.steps !== null ? y.steps.toLocaleString('en-IN') : '–';
+  $('mealList').innerHTML = S.todayMeals.map((m) => '<div class="row"><span>' + esc(m.Time) + ' · ' + esc(m.Text) + (m['In Window'] === 'N' ? ' <span class="unk">⚠</span>' : '') +
+    '<br><span class="mute">' + m.Kcal + ' kcal · ' + m.Protein + ' g' + (m.Status === 'pending' ? ' · Cris estimates overnight' : '') + '</span></span><button class="x" onclick="del(\'Meals\',\'' + m.Timestamp + '\')">✕</button></div>').join('') || '<span class="mute">Nothing yet.</span>';
+  $('woList').innerHTML = S.todayWorkouts.map((w) => '<div class="row"><span>' + esc(w.Type) + ' · ' + w.Minutes + ' min' + (w.Lifts ? '<br><span class="mute">' + esc(w.Lifts) + '</span>' : '') +
+    '</span><button class="x" onclick="del(\'Workouts\',\'' + w.Timestamp + '\')">✕</button></div>').join('') || '<span class="mute">Not yet — never miss twice.</span>';
+  if (S.coach) { show('coachCard'); $('verdict').textContent = S.coach.Verdict; $('fix').textContent = S.coach.Fix ? '→ ' + S.coach.Fix : ''; $('coachDate').textContent = 'on ' + S.coach['Day Scored'] + (S.coach.Weekly ? ' · ' + S.coach.Weekly : ''); }
+  renderFast(); renderWeek();
+  if (!S.checkinDone && $('checkin').classList.contains('hide') && !window._asked) { window._asked = true; openCheckin(); }
+}
+function renderFast() {
+  if (!S) return;
+  const T = S.targets, now = mins(nowHHMM());
+  const last = S.lastMeal ? (Date.now() - new Date(S.lastMeal.replace(' ', 'T') + ':00').getTime()) / 60000 : null;
+  if (inWindow(nowHHMM())) { $('fast').textContent = 'Eating window open'; $('fastSub').textContent = 'Closes ' + T.window_end + ' — ' + hm(mins(T.window_end) - now) + ' left'; }
+  else {
+    $('fast').textContent = last !== null ? 'Fasting ' + hm(last) : 'Fasting';
+    const open = mins(T.window_start), toOpen = now < open ? open - now : 1440 - now + open;
+    $('fastSub').textContent = 'Window opens ' + T.window_start + ' (in ' + hm(toOpen) + '). Water, black coffee, green tea only.';
+  }
+}
+function renderWeek() {
+  const w = S.week, T = S.targets;
+  $('weekStats').innerHTML = [['Avg score', w.avgScore !== null ? w.avgScore + '%' : '–'], ['Avg weight', w.avgWeight ? w.avgWeight + ' kg' : '–'],
+    ['Gym days', w.gymDays + ' / ' + T.gym_days_week], ['Cardio days', w.cardioDays + ' / ' + T.cardio_days_week],
+    ['Avg sleep', w.avgSleep ? w.avgSleep + ' h · ' + w.avgQuality + '/5' : '–'], ['Avg steps', w.avgSteps ? Math.round(w.avgSteps).toLocaleString('en-IN') : '–']]
+    .map((r) => '<div class="row"><span>' + r[0] + '</span><b>' + r[1] + '</b></div>').join('');
+  $('dayTable').innerHTML = '<tr><th>Day</th><th>Score</th><th>kcal</th><th>Prot</th><th>Sleep</th><th>Steps</th><th>Kg</th><th>Gym</th></tr>' +
+    S.days.slice().reverse().map((d) => '<tr><td>' + d.date.slice(5) + '</td><td>' + (d.logged ? d.score + '%' : '–') + '</td><td>' + (d.kcal || '–') + '</td><td>' + (d.protein || '–') +
+      '</td><td>' + (d.hours ?? '–') + '</td><td>' + (d.steps !== null ? (d.steps / 1000).toFixed(1) + 'k' : '–') + '</td><td>' + (d.weight ?? '–') + '</td><td>' + (d.workouts.length ? '✓' : '') + '</td></tr>').join('');
+}
+function del(tab, ts) { if (confirm('Delete this entry?')) call('delete', { tab: tab, ts: ts }); }
+
+setInterval(renderFast, 60000);
+window.addEventListener('online', refresh);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); });
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
+if (!CFG) show('setup'); else { if (S) render(); refresh(); }
+</script>
+</body>
+</html>
